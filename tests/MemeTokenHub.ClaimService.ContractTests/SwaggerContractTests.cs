@@ -25,6 +25,7 @@ public sealed class SwaggerContractTests
             Assert.That(paths.TryGetProperty("/api/claims/{claimId}/appeal", out _), Is.True);
             Assert.That(paths.TryGetProperty("/api/claims/{claimId}/public-status", out _), Is.True);
             Assert.That(paths.TryGetProperty("/api/claims/attachments/upload-url", out _), Is.True);
+            Assert.That(paths.TryGetProperty("/api/internal/claim-attachments/scan-result", out _), Is.True);
         });
     }
 }

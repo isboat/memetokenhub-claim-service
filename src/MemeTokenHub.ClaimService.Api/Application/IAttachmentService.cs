@@ -6,5 +6,7 @@ public interface IAttachmentService
 {
     Task<UploadUrlResponse> CreateUploadUrlAsync(string userId, CreateUploadUrlRequest request, CancellationToken cancellationToken);
 
-    Task ValidateReferencesAsync(IReadOnlyList<string> objectReferences, CancellationToken cancellationToken);
+    Task ValidateReferencesAsync(string userId, IReadOnlyList<string> objectReferences, CancellationToken cancellationToken);
+
+    Task RecordScanResultAsync(RecordAttachmentScanResultRequest request, CancellationToken cancellationToken);
 }

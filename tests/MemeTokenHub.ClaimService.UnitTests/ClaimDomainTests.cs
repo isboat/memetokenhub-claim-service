@@ -37,6 +37,21 @@ public sealed class ClaimDomainTests
         Assert.That(() => claim.SubmitAppeal(appeal, claim.UserId), Throws.TypeOf<InvalidClaimTransitionException>());
     }
 
+    [Test]
+    public void ReviewWithUndefinedStatusThrowsInvalidTransition()
+    {
+        Claim claim = CreateClaim();
+
+        TestDelegate review = () => claim.Review(
+            (ClaimStatus)99,
+            "moderator-1",
+            "Invalid status must not be persisted.",
+            "INVALID_STATUS",
+            DateTimeOffset.UtcNow);
+
+        Assert.That(review, Throws.TypeOf<InvalidClaimTransitionException>());
+    }
+
     private static Claim CreateClaim() => new()
     {
         ClaimId = "claim-1",

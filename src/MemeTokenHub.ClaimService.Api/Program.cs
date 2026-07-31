@@ -15,7 +15,7 @@ using MongoDB.Driver;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers().AddJsonOptions(options =>
-    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -66,6 +66,7 @@ builder.Services.AddSingleton(mongoClient.GetDatabase(mongoOptions.DatabaseName)
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IClaimRepository, MongoClaimRepository>();
+builder.Services.AddScoped<IAttachmentRepository, MongoAttachmentRepository>();
 builder.Services.AddScoped<IClaimService, ClaimService>();
 builder.Services.AddScoped<IReferenceValidationService, ReferenceValidationService>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
@@ -91,6 +92,8 @@ builder.Services.AddMemeTokenHubAuthentication(builder.Configuration);
 builder.Services.AddAuthorizationBuilder().AddPolicy("ClaimModerator", policy =>
     policy.RequireAuthenticatedUser().RequireAssertion(context =>
         context.User.IsInRole("Moderator") || context.User.HasClaim("capability", "moderation:claims")));
+builder.Services.AddAuthorizationBuilder().AddPolicy("AttachmentScanner", policy =>
+    policy.RequireAuthenticatedUser().RequireClaim("capability", "attachments:scan"));
 
 ServiceBusOptions serviceBusOptions = builder.Configuration.GetSection(ServiceBusOptions.SectionName).Get<ServiceBusOptions>()
     ?? throw new InvalidOperationException("ServiceBus configuration is required.");

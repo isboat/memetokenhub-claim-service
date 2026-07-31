@@ -21,9 +21,11 @@ public sealed class ClaimService(
         SubmitClaimRequest request,
         CancellationToken cancellationToken)
     {
+        ValidateClaimType(request.Type);
+        ValidateProofMethod(request.Proof.Method);
         await referenceValidationService.ValidateClaimantAsync(userId, cancellationToken);
         await referenceValidationService.ValidateTokenAsync(request.TokenId, cancellationToken);
-        await attachmentService.ValidateReferencesAsync(request.Attachments, cancellationToken);
+        await attachmentService.ValidateReferencesAsync(userId, request.Attachments, cancellationToken);
 
         DateTimeOffset submittedAt = timeProvider.GetUtcNow();
         Claim claim = new()
@@ -148,7 +150,8 @@ public sealed class ClaimService(
             throw new ClaimAccessDeniedException();
         }
 
-        await attachmentService.ValidateReferencesAsync(request.Attachments, cancellationToken);
+        ValidateProofMethod(request.Proof.Method);
+        await attachmentService.ValidateReferencesAsync(userId, request.Attachments, cancellationToken);
         long previousVersion = claim.Version;
         ClaimAppeal appeal = new()
         {
@@ -170,4 +173,20 @@ public sealed class ClaimService(
     private async Task<Claim> GetRequiredClaimAsync(string claimId, CancellationToken cancellationToken) =>
         await claimRepository.GetByClaimIdAsync(claimId, cancellationToken)
         ?? throw new EntityNotFoundException($"Claim '{claimId}' was not found.");
+
+    private static void ValidateClaimType(ClaimType claimType)
+    {
+        if (!Enum.IsDefined(claimType))
+        {
+            throw new ArgumentException("The claim type is not defined.", nameof(claimType));
+        }
+    }
+
+    private static void ValidateProofMethod(ProofMethod proofMethod)
+    {
+        if (!Enum.IsDefined(proofMethod))
+        {
+            throw new ArgumentException("The proof method is not defined.", nameof(proofMethod));
+        }
+    }
 }

@@ -43,6 +43,11 @@ public sealed class Claim
 
     public void Review(ClaimStatus decision, string reviewerId, string notes, string reasonCode, DateTimeOffset reviewedAt)
     {
+        if (!Enum.IsDefined(decision))
+        {
+            throw new InvalidClaimTransitionException("The review decision is not a defined claim status.");
+        }
+
         if (Status != ClaimStatus.Pending)
         {
             throw new InvalidClaimTransitionException("Only pending claims can be reviewed.");

@@ -10,7 +10,7 @@ The Claim Service is the private evidence and moderation bounded context for Mem
 - Owner-only, single-appeal workflow with optimistic concurrency.
 - Public status responses designed for badges and intentionally free of evidence and moderator notes.
 - Transactional MongoDB outbox and idempotent `ClaimApproved` event identifiers.
-- Short-lived HMAC-signed attachment upload URLs with content-type and size restrictions.
+- Short-lived HMAC-signed attachment upload URLs with ownership records, content-type and size restrictions, and mandatory scanner approval before use.
 - RFC 7807 error responses, JWT authentication, capability-based moderation authorization, dependency-aware health checks, Swagger/OpenAPI, and Swagger UI.
 
 ## Technology
@@ -115,8 +115,11 @@ The dashboard endpoint checks Claim Service itself, MongoDB, User Service, Token
 | `PUT` | `/api/claims/{claimId}/review` | Claim moderator | Approve or reject with an expected version |
 | `POST` | `/api/claims/{claimId}/appeal` | Owner | Submit the single permitted appeal |
 | `POST` | `/api/claims/attachments/upload-url` | Authenticated | Create a restricted upload URL |
+| `POST` | `/api/internal/claim-attachments/scan-result` | Attachment scanner | Record the trusted final upload scan result |
 
 Moderation authorization accepts either the `Moderator` role or the `moderation:claims` capability. User identifiers are read from the JWT subject rather than trusted from a submission body.
+
+Every upload URL creates a pending attachment record bound to the authenticated user. A trusted scanning worker with the `attachments:scan` capability records the final malware, content-type, and size decision. Submissions and appeals accept only unique attachment references that belong to the claimant and have reached the approved scan state; missing, foreign, pending, or rejected references are refused.
 
 ## Event delivery
 

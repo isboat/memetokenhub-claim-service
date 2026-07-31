@@ -18,6 +18,18 @@ public sealed class MongoIndexInitializer(IMongoDatabase database) : IHostedServ
         ];
         await claims.Indexes.CreateManyAsync(claimIndexes, cancellationToken);
 
+        IMongoCollection<ClaimAttachment> attachments = database.GetCollection<ClaimAttachment>("ClaimAttachments");
+        CreateIndexModel<ClaimAttachment>[] attachmentIndexes =
+        [
+            new(
+                Builders<ClaimAttachment>.IndexKeys.Ascending(attachment => attachment.ObjectReference),
+                new CreateIndexOptions { Unique = true }),
+            new(Builders<ClaimAttachment>.IndexKeys
+                .Ascending(attachment => attachment.UserId)
+                .Ascending(attachment => attachment.ScanStatus))
+        ];
+        await attachments.Indexes.CreateManyAsync(attachmentIndexes, cancellationToken);
+
         IMongoCollection<OutboxMessage> outbox = database.GetCollection<OutboxMessage>("Outbox");
         CreateIndexModel<OutboxMessage> outboxIndex = new(
             Builders<OutboxMessage>.IndexKeys.Ascending(message => message.PublishedAt).Ascending(message => message.OccurredAt));

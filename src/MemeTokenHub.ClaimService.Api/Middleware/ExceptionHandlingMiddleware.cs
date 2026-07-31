@@ -27,6 +27,7 @@ public sealed partial class ExceptionHandlingMiddleware(RequestDelegate next, IL
             ClaimAccessDeniedException => (StatusCodes.Status403Forbidden, "Access denied"),
             ClaimConcurrencyException or MongoWriteException => (StatusCodes.Status409Conflict, "Conflict"),
             InvalidClaimTransitionException => (StatusCodes.Status422UnprocessableEntity, "Invalid claim transition"),
+            InvalidClaimAttachmentException => (StatusCodes.Status422UnprocessableEntity, "Invalid claim attachment"),
             ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request"),
             DependencyUnavailableException => (StatusCodes.Status503ServiceUnavailable, "Dependency unavailable"),
             _ => (StatusCodes.Status500InternalServerError, "Unexpected error")

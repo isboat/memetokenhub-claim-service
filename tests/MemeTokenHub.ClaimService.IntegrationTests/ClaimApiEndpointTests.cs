@@ -2,11 +2,34 @@ using System.Net;
 using System.Text.Json;
 using MemeTokenHub.ClaimService.Api.Domain;
 using MemeTokenHub.ClaimService.Api.Dtos;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace MemeTokenHub.ClaimService.IntegrationTests;
 
 public sealed class ClaimApiEndpointTests
 {
+    [Test]
+    public void JsonConfigurationRejectsNumericEnumValues()
+    {
+        using ClaimApiFactory factory = new();
+        using IServiceScope scope = factory.Services.CreateScope();
+        JsonOptions jsonOptions = scope.ServiceProvider.GetRequiredService<IOptions<JsonOptions>>().Value;
+        const string request = """
+            {
+              "tokenId": "token-1",
+              "type": 99,
+              "description": "This description is long enough.",
+              "proof": { "method": "walletSignature" }
+            }
+            """;
+
+        TestDelegate deserialize = () => JsonSerializer.Deserialize<SubmitClaimRequest>(request, jsonOptions.JsonSerializerOptions);
+
+        Assert.That(deserialize, Throws.TypeOf<JsonException>());
+    }
+
     [Test]
     public async Task GetLivenessReturnsHealthyStatus()
     {
