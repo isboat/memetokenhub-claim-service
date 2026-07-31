@@ -1,0 +1,38 @@
+name: Main CI
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Authenticate to GitHub Packages
+        run: dotnet nuget update source MemeTokenHub --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}" --store-password-in-clear-text
+      - name: Restore dependencies
+        run: dotnet restore MemeTokenHub.ClaimService.sln
+      - name: Verify formatting
+        run: dotnet format MemeTokenHub.ClaimService.sln --no-restore --verify-no-changes
+      - name: Build
+        run: dotnet build MemeTokenHub.ClaimService.sln --configuration Release --no-restore
+      - name: Test
+        run: dotnet test MemeTokenHub.ClaimService.sln --configuration Release --no-build --collect:"XPlat Code Coverage"
+      - name: Publish application artifact
+        run: dotnet publish src/MemeTokenHub.ClaimService.Api/MemeTokenHub.ClaimService.Api.csproj --configuration Release --no-build --output publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: claim-service
+          path: publish
+          if-no-files-found: error
