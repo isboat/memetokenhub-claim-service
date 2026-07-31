@@ -5,8 +5,24 @@ using MemeTokenHub.ClaimService.Api.Dtos;
 
 namespace MemeTokenHub.ClaimService.IntegrationTests;
 
-public sealed class PublicStatusEndpointTests
+public sealed class ClaimApiEndpointTests
 {
+    [Test]
+    public async Task GetLivenessReturnsHealthyStatus()
+    {
+        await using ClaimApiFactory factory = new();
+        using HttpClient client = factory.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync("/health/live");
+        string responseBody = await response.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(responseBody, Is.EqualTo("Healthy"));
+        });
+    }
+
     [Test]
     public async Task GetPublicStatusWithoutAuthenticationReturnsRedactedApprovedStatus()
     {

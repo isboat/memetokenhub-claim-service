@@ -3,9 +3,12 @@ using System.Text.Json.Serialization;
 using Azure.Messaging.ServiceBus;
 using MemeTokenHub.ClaimService.Api.Application;
 using MemeTokenHub.ClaimService.Api.Configuration;
+using MemeTokenHub.ClaimService.Api.Health;
 using MemeTokenHub.ClaimService.Api.Infrastructure;
 using MemeTokenHub.ClaimService.Api.Middleware;
 using MemeTokenHub.Shared.Auth;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using MongoDB.Driver;
 
@@ -71,9 +74,17 @@ builder.Services.AddTransient<ServiceAuthenticationHandler>();
 
 ServiceEndpointOptions endpoints = builder.Configuration.GetSection(ServiceEndpointOptions.SectionName).Get<ServiceEndpointOptions>()
     ?? throw new InvalidOperationException("ServiceEndpoints configuration is required.");
-builder.Services.AddHttpClient("UserService", client => client.BaseAddress = new Uri(endpoints.UserService))
+builder.Services.AddHttpClient("UserService", client =>
+{
+    client.BaseAddress = new Uri(endpoints.UserService);
+    client.Timeout = TimeSpan.FromSeconds(5);
+})
     .AddHttpMessageHandler<ServiceAuthenticationHandler>();
-builder.Services.AddHttpClient("TokenService", client => client.BaseAddress = new Uri(endpoints.TokenService))
+builder.Services.AddHttpClient("TokenService", client =>
+{
+    client.BaseAddress = new Uri(endpoints.TokenService);
+    client.Timeout = TimeSpan.FromSeconds(5);
+})
     .AddHttpMessageHandler<ServiceAuthenticationHandler>();
 
 builder.Services.AddMemeTokenHubAuthentication(builder.Configuration);
@@ -83,15 +94,33 @@ builder.Services.AddAuthorizationBuilder().AddPolicy("ClaimModerator", policy =>
 
 ServiceBusOptions serviceBusOptions = builder.Configuration.GetSection(ServiceBusOptions.SectionName).Get<ServiceBusOptions>()
     ?? throw new InvalidOperationException("ServiceBus configuration is required.");
+IHealthChecksBuilder healthChecks = builder.Services.AddHealthChecks()
+    .AddCheck("application", () => HealthCheckResult.Healthy("Claim Service is running."), tags: ["live", "ready", "dashboard"])
+    .AddMongoDb(
+        _ => mongoClient,
+        name: "mongodb",
+        tags: ["ready", "dashboard"],
+        timeout: TimeSpan.FromSeconds(6));
+healthChecks.Add(new HealthCheckRegistration(
+    "user-service",
+    provider => new DownstreamServiceHealthCheck(provider.GetRequiredService<IHttpClientFactory>(), "UserService"),
+    HealthStatus.Unhealthy,
+    ["ready", "dashboard"],
+    TimeSpan.FromSeconds(6)));
+healthChecks.Add(new HealthCheckRegistration(
+    "token-service",
+    provider => new DownstreamServiceHealthCheck(provider.GetRequiredService<IHttpClientFactory>(), "TokenService"),
+    HealthStatus.Unhealthy,
+    ["ready", "dashboard"],
+    TimeSpan.FromSeconds(6)));
 if (serviceBusOptions.Enabled)
 {
     builder.Services.AddSingleton(new ServiceBusClient(serviceBusOptions.ConnectionString));
     builder.Services.AddSingleton(provider => provider.GetRequiredService<ServiceBusClient>().CreateSender(serviceBusOptions.TopicName));
     builder.Services.AddHostedService<MongoIndexInitializer>();
     builder.Services.AddHostedService<OutboxPublisher>();
+    healthChecks.AddCheck<ServiceBusHealthCheck>("azure-service-bus", tags: ["ready", "dashboard"], timeout: TimeSpan.FromSeconds(6));
 }
-
-builder.Services.AddHealthChecks().AddMongoDb(_ => mongoClient, name: "mongodb");
 
 WebApplication app = builder.Build();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
@@ -106,11 +135,19 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
-    Predicate = _ => false
+    Predicate = registration => registration.Tags.Contains("live")
 });
-app.MapHealthChecks("/health/ready");
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready")
+});
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("dashboard"),
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+});
 app.Run();
 
 public partial class Program;

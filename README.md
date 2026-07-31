@@ -11,7 +11,7 @@ The Claim Service is the private evidence and moderation bounded context for Mem
 - Public status responses designed for badges and intentionally free of evidence and moderator notes.
 - Transactional MongoDB outbox and idempotent `ClaimApproved` event identifiers.
 - Short-lived HMAC-signed attachment upload URLs with content-type and size restrictions.
-- RFC 7807 error responses, JWT authentication, capability-based moderation authorization, health checks, Swagger/OpenAPI, and Swagger UI.
+- RFC 7807 error responses, JWT authentication, capability-based moderation authorization, dependency-aware health checks, Swagger/OpenAPI, and Swagger UI.
 
 ## Technology
 
@@ -88,7 +88,19 @@ Run locally with:
 dotnet run --project src/MemeTokenHub.ClaimService.Api
 ```
 
-Swagger UI is available at `/swagger`; the OpenAPI document is at `/swagger/v1/swagger.json`. Health probes are exposed at `/health/live` and `/health/ready`.
+Swagger UI is available at `/swagger`; the OpenAPI document is at `/swagger/v1/swagger.json`.
+
+## Health checks
+
+The service exposes three unauthenticated health endpoints for platform probes and the operations dashboard:
+
+| Route | Purpose |
+| --- | --- |
+| `/health/live` | Lightweight application liveness check |
+| `/health/ready` | Readiness check covering the application and every enabled dependency |
+| `/health` | Detailed dashboard response with overall status, timestamp, duration, and per-component results |
+
+The dashboard endpoint checks Claim Service itself, MongoDB, User Service, Token Service, and Azure Service Bus when messaging is enabled. Downstream services are queried through their `/health/ready` endpoints using the same service-authenticated clients as application traffic. A required dependency failure produces HTTP `503 Service Unavailable`; a fully healthy report produces HTTP `200 OK`. Exception details and connection secrets are never included in the response.
 
 ## API overview
 
