@@ -9,4 +9,6 @@ public sealed class ClaimAuditEntry
     public required DateTimeOffset OccurredAt { get; init; }
 
     public string? ReasonCode { get; init; }
+
+    public string? Notes { get; init; }
 }

@@ -119,7 +119,7 @@ The dashboard endpoint checks Claim Service itself, MongoDB, User Service, Token
 
 Moderation authorization accepts either the `Moderator` role or the `moderation:claims` capability. User identifiers are read from the JWT subject rather than trusted from a submission body.
 
-Every upload URL creates a pending attachment record bound to the authenticated user. A trusted scanning worker with the `attachments:scan` capability records the final malware, content-type, and size decision. Submissions and appeals accept only unique attachment references that belong to the claimant and have reached the approved scan state; missing, foreign, pending, or rejected references are refused.
+Every upload URL creates a pending attachment record bound to the authenticated user. Its HMAC covers the object reference, expiry, content type, and permitted content length; the receiving upload gateway must reject a body whose content type or length differs from that signed metadata. A trusted scanning worker with the `attachments:scan` capability records the final malware, content-type, and size decision. Submissions and appeals accept only unique attachment references that belong to the claimant and have reached the approved scan state; missing, foreign, pending, or rejected references are refused.
 
 ## Event delivery
 

@@ -33,10 +33,12 @@ public sealed class AttachmentService(
         DateTimeOffset expiresAt = timeProvider.GetUtcNow().AddMinutes(_options.UploadLifetimeMinutes);
         string safeExtension = Path.GetExtension(request.FileName).ToLowerInvariant();
         string objectReference = $"claims/{userId}/{Guid.NewGuid():N}{safeExtension}";
-        string valueToSign = $"{objectReference}|{expiresAt.ToUnixTimeSeconds()}|{request.ContentType}";
+        string valueToSign = $"{objectReference}|{expiresAt.ToUnixTimeSeconds()}|{request.ContentType}|{request.SizeInBytes}";
         byte[] key = Encoding.UTF8.GetBytes(_options.SigningKey);
         string signature = Convert.ToHexStringLower(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(valueToSign)));
-        string uploadUrl = $"{_options.UploadBaseUrl.TrimEnd('/')}/{objectReference}?expires={expiresAt.ToUnixTimeSeconds()}&signature={signature}";
+        string uploadUrl = $"{_options.UploadBaseUrl.TrimEnd('/')}/{objectReference}"
+            + $"?expires={expiresAt.ToUnixTimeSeconds()}&contentType={Uri.EscapeDataString(request.ContentType)}"
+            + $"&maxSize={request.SizeInBytes}&signature={signature}";
         ClaimAttachment attachment = new()
         {
             ObjectReference = objectReference,

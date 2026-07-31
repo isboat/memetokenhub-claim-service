@@ -1,6 +1,7 @@
 using MemeTokenHub.ClaimService.Api.Application;
 using MemeTokenHub.ClaimService.Api.Configuration;
 using MemeTokenHub.ClaimService.Api.Domain;
+using MemeTokenHub.ClaimService.Api.Dtos;
 using MemeTokenHub.ClaimService.Api.Infrastructure;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -9,6 +10,30 @@ namespace MemeTokenHub.ClaimService.UnitTests;
 
 public sealed class AttachmentServiceTests
 {
+    [Test]
+    public async Task CreateUploadUrlAsyncSignsPermittedContentLength()
+    {
+        Mock<IAttachmentRepository> repository = new();
+        AttachmentService service = CreateService(repository.Object);
+        CreateUploadUrlRequest request = new()
+        {
+            FileName = "evidence.pdf",
+            ContentType = "application/pdf",
+            SizeInBytes = 2048
+        };
+
+        UploadUrlResponse response = await service.CreateUploadUrlAsync("user-1", request, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.UploadUrl.Query, Does.Contain("maxSize=2048"));
+            Assert.That(response.UploadUrl.Query, Does.Contain("contentType=application%2Fpdf"));
+        });
+        repository.Verify(item => item.CreateAsync(
+            It.Is<ClaimAttachment>(attachment => attachment.DeclaredSizeInBytes == 2048),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Test]
     public void ValidateReferencesAsyncRejectsAttachmentOwnedByAnotherUser()
     {

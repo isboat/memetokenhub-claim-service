@@ -10,6 +10,32 @@ using ApplicationClaimService = MemeTokenHub.ClaimService.Api.Application.ClaimS
 public sealed class ClaimServiceTests
 {
     [Test]
+    public void SubmitAsyncRejectsWhitespaceOnlyDescriptionAfterNormalization()
+    {
+        Mock<IReferenceValidationService> referenceValidation = new();
+        ApplicationClaimService service = new(
+            Mock.Of<IClaimRepository>(),
+            referenceValidation.Object,
+            Mock.Of<IAttachmentService>(),
+            Mock.Of<IEventEnvelopeFactory>(),
+            TimeProvider.System);
+        SubmitClaimRequest request = new()
+        {
+            TokenId = "token-1",
+            Type = ClaimType.ProjectOwnership,
+            Description = "          ",
+            Proof = new ProofRequest { Method = ProofMethod.WalletSignature }
+        };
+
+        AsyncTestDelegate submit = async () => await service.SubmitAsync("user-1", request, CancellationToken.None);
+
+        Assert.That(submit, Throws.TypeOf<ArgumentException>());
+        referenceValidation.Verify(
+            item => item.ValidateClaimantAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Test]
     public async Task ReviewAsyncWithApprovalPersistsClaimAndOutboxTogether()
     {
         Claim claim = CreateClaim();

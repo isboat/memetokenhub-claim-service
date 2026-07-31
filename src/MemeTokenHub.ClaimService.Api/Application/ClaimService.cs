@@ -23,6 +23,7 @@ public sealed class ClaimService(
     {
         ValidateClaimType(request.Type);
         ValidateProofMethod(request.Proof.Method);
+        string description = NormalizeRequiredText(request.Description, nameof(request.Description), 10);
         await referenceValidationService.ValidateClaimantAsync(userId, cancellationToken);
         await referenceValidationService.ValidateTokenAsync(request.TokenId, cancellationToken);
         await attachmentService.ValidateReferencesAsync(userId, request.Attachments, cancellationToken);
@@ -34,7 +35,7 @@ public sealed class ClaimService(
             UserId = userId,
             TokenId = request.TokenId,
             Type = request.Type,
-            Description = request.Description.Trim(),
+            Description = description,
             Attachments = request.Attachments.ToArray(),
             Proof = request.Proof.ToSnapshot(),
             SubmittedAt = submittedAt,
@@ -115,7 +116,9 @@ public sealed class ClaimService(
             throw new ClaimConcurrencyException();
         }
 
-        claim.Review(request.Status, reviewerId, request.Notes.Trim(), request.ReasonCode.Trim(), timeProvider.GetUtcNow());
+        string reviewNotes = NormalizeRequiredText(request.Notes, nameof(request.Notes), 1);
+        string reasonCode = NormalizeRequiredText(request.ReasonCode, nameof(request.ReasonCode), 1);
+        claim.Review(request.Status, reviewerId, reviewNotes, reasonCode, timeProvider.GetUtcNow());
         bool updated;
         if (claim.Status == ClaimStatus.Approved)
         {
@@ -151,11 +154,12 @@ public sealed class ClaimService(
         }
 
         ValidateProofMethod(request.Proof.Method);
+        string appealReason = NormalizeRequiredText(request.Reason, nameof(request.Reason), 10);
         await attachmentService.ValidateReferencesAsync(userId, request.Attachments, cancellationToken);
         long previousVersion = claim.Version;
         ClaimAppeal appeal = new()
         {
-            Reason = request.Reason.Trim(),
+            Reason = appealReason,
             Proof = request.Proof.ToSnapshot(),
             Attachments = request.Attachments.ToArray(),
             SubmittedAt = timeProvider.GetUtcNow()
@@ -188,5 +192,18 @@ public sealed class ClaimService(
         {
             throw new ArgumentException("The proof method is not defined.", nameof(proofMethod));
         }
+    }
+
+    private static string NormalizeRequiredText(string value, string parameterName, int minimumLength)
+    {
+        string normalizedValue = value.Trim();
+        if (normalizedValue.Length < minimumLength)
+        {
+            throw new ArgumentException(
+                $"The value must contain at least {minimumLength} non-whitespace characters.",
+                parameterName);
+        }
+
+        return normalizedValue;
     }
 }

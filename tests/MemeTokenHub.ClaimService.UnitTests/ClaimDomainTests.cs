@@ -32,9 +32,14 @@ public sealed class ClaimDomainTests
             SubmittedAt = DateTimeOffset.UtcNow
         };
         claim.SubmitAppeal(appeal, claim.UserId);
+        ClaimAuditEntry originalReview = claim.AuditHistory.Single(entry => entry.Action == ClaimStatus.Rejected.ToString());
         claim.Review(ClaimStatus.Rejected, "moderator-2", "Proof is still invalid.", "PROOF_INVALID", DateTimeOffset.UtcNow);
 
-        Assert.That(() => claim.SubmitAppeal(appeal, claim.UserId), Throws.TypeOf<InvalidClaimTransitionException>());
+        Assert.Multiple(() =>
+        {
+            Assert.That(originalReview.Notes, Is.EqualTo("Insufficient proof."));
+            Assert.That(() => claim.SubmitAppeal(appeal, claim.UserId), Throws.TypeOf<InvalidClaimTransitionException>());
+        });
     }
 
     [Test]

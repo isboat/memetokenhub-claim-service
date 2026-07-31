@@ -69,7 +69,8 @@ public sealed class Claim
             Action = decision.ToString(),
             ActorId = reviewerId,
             OccurredAt = reviewedAt,
-            ReasonCode = reasonCode
+            ReasonCode = reasonCode,
+            Notes = notes
         });
     }
 
