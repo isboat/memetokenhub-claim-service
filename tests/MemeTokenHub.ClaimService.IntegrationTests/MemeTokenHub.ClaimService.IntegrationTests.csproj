@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsPackable>false</IsPackable><IsTestProject>true</IsTestProject></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="NUnit" Version="4.5.1" />
+    <PackageReference Include="NUnit3TestAdapter" Version="6.2.0" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../src/MemeTokenHub.ClaimService.Api/MemeTokenHub.ClaimService.Api.csproj" /></ItemGroup>
+</Project>

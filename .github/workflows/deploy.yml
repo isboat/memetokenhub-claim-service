@@ -1,0 +1,42 @@
+name: Deploy Claim Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub environment containing the Azure publish profile
+        required: true
+        default: production
+        type: environment
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Authenticate to GitHub Packages
+        run: dotnet nuget update source MemeTokenHub --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}" --store-password-in-clear-text
+      - name: Restore dependencies
+        run: dotnet restore MemeTokenHub.ClaimService.sln
+      - name: Build
+        run: dotnet build MemeTokenHub.ClaimService.sln --configuration Release --no-restore
+      - name: Test
+        run: dotnet test MemeTokenHub.ClaimService.sln --configuration Release --no-build
+      - name: Publish
+        run: dotnet publish src/MemeTokenHub.ClaimService.Api/MemeTokenHub.ClaimService.Api.csproj --configuration Release --no-build --output publish
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish
